@@ -71,6 +71,13 @@ type CP struct {
 	IssueDate string  `json:"issueDate"`
 }
 
+type Incident struct {
+	Title     string  `json:"title"`
+	Type    string  `json:"type"`
+	Description       string `json:"description"`
+	IncidentDate string  `json:"incidentDate"`
+}
+
 type Account struct {
 	ID          string  `json:"id"`
 	Prefix      string  `json:"prefix"`
@@ -143,6 +150,71 @@ func (t *SimpleChaincode) createAccount(stub *shim.ChaincodeStub, args []string)
     if len(args) != 1 {
         fmt.Println("Error obtaining username")
         return nil, errors.New("createAccount accepts a single username argument")
+    }
+    username := args[0]
+    
+    // Build an account object for the user
+    var assetIds []string
+    suffix := "000A"
+    prefix := username + suffix
+    var account = Account{ID: username, Prefix: prefix, CashBalance: 10000000.0, AssetsIds: assetIds}
+    accountBytes, err := json.Marshal(&account)
+    if err != nil {
+        fmt.Println("error creating account" + account.ID)
+        return nil, errors.New("Error creating account " + account.ID)
+    }
+    
+    fmt.Println("Attempting to get state of any existing account for " + account.ID)
+    existingBytes, err := stub.GetState(accountPrefix + account.ID)
+	if err == nil {
+        
+        var company Account
+        err = json.Unmarshal(existingBytes, &company)
+        if err != nil {
+            fmt.Println("Error unmarshalling account " + account.ID + "\n--->: " + err.Error())
+            
+            if strings.Contains(err.Error(), "unexpected end") {
+                fmt.Println("No data means existing account found for " + account.ID + ", initializing account.")
+                err = stub.PutState(accountPrefix+account.ID, accountBytes)
+                
+                if err == nil {
+                    fmt.Println("created account" + accountPrefix + account.ID)
+                    return nil, nil
+                } else {
+                    fmt.Println("failed to create initialize account for " + account.ID)
+                    return nil, errors.New("failed to initialize an account for " + account.ID + " => " + err.Error())
+                }
+            } else {
+                return nil, errors.New("Error unmarshalling existing account " + account.ID)
+            }
+        } else {
+            fmt.Println("Account already exists for " + account.ID + " " + company.ID)
+		    return nil, errors.New("Can't reinitialize existing user " + account.ID)
+        }
+    } else {
+        
+        fmt.Println("No existing account found for " + account.ID + ", initializing account.")
+        err = stub.PutState(accountPrefix+account.ID, accountBytes)
+        
+        if err == nil {
+            fmt.Println("created account" + accountPrefix + account.ID)
+            return nil, nil
+        } else {
+            fmt.Println("failed to create initialize account for " + account.ID)
+            return nil, errors.New("failed to initialize an account for " + account.ID + " => " + err.Error())
+        }
+        
+    }
+    
+    
+}
+
+
+func (t *SimpleChaincode) createIncident(stub *shim.ChaincodeStub, args []string) ([]byte, error) {
+    // Obtain the username to associate with the account
+    if len(args) != 1 {
+        fmt.Println("Error obtaining username")
+        return nil, errors.New("createIncident accepts a single username argument")
     }
     username := args[0]
     
@@ -380,6 +452,8 @@ func (t *SimpleChaincode) issueCommercialPaper(stub *shim.ChaincodeStub, args []
 		return nil, nil
 	}
 }
+
+
 
 
 func GetAllCPs(stub *shim.ChaincodeStub) ([]CP, error){
