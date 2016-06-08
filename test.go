@@ -790,6 +790,9 @@ func (t *SimpleChaincode) Invoke(stub *shim.ChaincodeStub, function string, args
 	} else if function == "createAccounts" {
 		fmt.Println("Firing createAccounts")
 		return t.createAccounts(stub, args)
+	} else if function == "createIncident" {
+		fmt.Println("Firing createIncident")
+		return t.createIncident(stub, args)		
 	} else if function == "createAccount" {
         fmt.Println("Firing createAccount")
         return t.createAccount(stub, args)
